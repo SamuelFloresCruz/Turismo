@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ImageOrPlaceholder } from '@/components/ui/image-or-placeholder'
 import { notFound } from 'next/navigation'
+import { useApp } from '@/components/app-shell'
 import { 
   MapPin, Star, Clock, DollarSign, Lightbulb, ChevronLeft, ChevronRight,
   Navigation, Hotel, Utensils, MessageSquare, Heart, Share2, Calendar
@@ -21,6 +22,7 @@ interface PageProps {
 }
 
 export default function LugarDetailPage({ params }: PageProps) {
+  const { openAuth } = useApp()
   const { id } = use(params)
   const [lugar, setLugar] = useState<Lugar | null>(null)
   const [restaurantes, setRestaurantes] = useState<Restaurante[]>([])
@@ -402,7 +404,7 @@ export default function LugarDetailPage({ params }: PageProps) {
                   <MessageSquare className="w-5 h-5 text-primary" />
                   Reseñas de visitantes
                 </CardTitle>
-                <Button>Escribir reseña</Button>
+                <Button onClick={openAuth}>Escribir reseña</Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 {resenas.length > 0 ? resenas.map((resena) => (

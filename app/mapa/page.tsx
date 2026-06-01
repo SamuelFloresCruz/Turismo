@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ImageOrPlaceholder } from '@/components/ui/image-or-placeholder'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import {
   MapPin, Hotel, Utensils, Landmark, Star, X, Clock, Phone, 
   Navigation, Cloud, Bus, MessageSquare, Filter, Thermometer, Wind
@@ -48,6 +49,7 @@ const rutasTransporte = [
 ]
 
 export default function MapaPage() {
+  const searchParams = useSearchParams()
   const [filtro, setFiltro] = useState<FilterType>('todos')
   const [selectedItem, setSelectedItem] = useState<MapItem | null>(null)
   const [showClima, setShowClima] = useState(true)
@@ -224,11 +226,22 @@ export default function MapaPage() {
     }))
     
     return items
-  }, [])
+  }, [alojamientos, eventos, lugares, restaurantes])
 
   const itemsFiltrados = filtro === 'todos' 
     ? todosLosItems 
     : todosLosItems.filter(item => item.tipo === filtro)
+
+  useEffect(() => {
+    const targetId = searchParams.get('select')
+    if (!targetId || todosLosItems.length === 0) {
+      return
+    }
+    const match = todosLosItems.find(item => item.id === targetId)
+    if (match) {
+      setSelectedItem(match)
+    }
+  }, [searchParams, todosLosItems])
 
   const filtros: { id: FilterType; label: string; icon: typeof MapPin; color: string }[] = [
     { id: 'todos', label: 'Todos', icon: Filter, color: 'bg-foreground' },

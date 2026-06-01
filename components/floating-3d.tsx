@@ -74,7 +74,11 @@ function Scene() {
 export default function Floating3DElements() {
   return (
     <div className="absolute inset-0 -z-10 opacity-50 pointer-events-none">
-      <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
+      <Canvas
+        camera={{ position: [0, 0, 8], fov: 45 }}
+        dpr={[1, 1.25]}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
+      >
         <Scene />
       </Canvas>
     </div>

@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Send, X, Sparkles, MapPin, Utensils, Calendar, Lightbulb, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useApp } from '@/components/app-shell'
 
 const sugerencias = [
   { icon: MapPin, texto: '¿Cuáles son los mejores lugares para visitar?' },
@@ -16,7 +17,7 @@ const sugerencias = [
 interface Mensaje {
   tipo: 'bot' | 'user'
   texto: string
-  accion?: { tipo: string; destino: string; label: string }
+  accion?: { tipo: 'link' | 'navigate' | 'map_select' | 'open_auth'; destino?: string; label: string }
 }
 
 const mensajesEjemplo: Mensaje[] = [
@@ -32,6 +33,8 @@ interface AISidePanelProps {
 }
 
 export default function AISidePanel({ isOpen, onClose }: AISidePanelProps) {
+  const router = useRouter()
+  const { openAuth } = useApp()
   const [mensajes, setMensajes] = useState<Mensaje[]>(mensajesEjemplo)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -45,55 +48,57 @@ export default function AISidePanel({ isOpen, onClose }: AISidePanelProps) {
     scrollToBottom()
   }, [mensajes])
 
-  const enviarMensaje = (texto: string) => {
+  const ejecutarAccion = (accion?: Mensaje['accion']) => {
+    if (!accion) return
+    if (accion.tipo === 'open_auth') {
+      openAuth()
+      return
+    }
+    if (accion.tipo === 'map_select' && accion.destino) {
+      router.push(`/mapa?select=${accion.destino}`)
+      return
+    }
+    if ((accion.tipo === 'navigate' || accion.tipo === 'link') && accion.destino) {
+      router.push(accion.destino)
+    }
+  }
+
+  const enviarMensaje = async (texto: string) => {
     if (!texto.trim()) return
     
     setMensajes(prev => [...prev, { tipo: 'user', texto }])
     setInput('')
     setIsTyping(true)
-    
-    // Simular respuesta del bot con acciones dinámicas
-    setTimeout(() => {
-      let respuesta: Mensaje = {
+
+    try {
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...mensajes, { tipo: 'user', texto }].map(m => ({ role: m.tipo === 'user' ? 'user' : 'assistant', content: m.texto }))
+        }),
+      })
+      const data = await response.json()
+      const respuesta: Mensaje = {
         tipo: 'bot',
-        texto: ''
+        texto: data.reply ?? 'No pude generar respuesta en este momento.',
+        accion: data.action
       }
-
-      if (texto.toLowerCase().includes('lugar') || texto.toLowerCase().includes('visitar')) {
-        respuesta = {
-          tipo: 'bot',
-          texto: 'Te recomiendo visitar el Cristo de la Concordia, Torotoro y el Parque Nacional Tunari. Son lugares imperdibles!',
-          accion: { tipo: 'link', destino: '/lugares', label: 'Ver todos los lugares' }
-        }
-      } else if (texto.toLowerCase().includes('silpancho') || texto.toLowerCase().includes('comer')) {
-        respuesta = {
-          tipo: 'bot',
-          texto: 'Para el mejor silpancho, te recomiendo "El Silpancho de Oro" en el centro. También puedes explorar La Cancha para opciones más auténticas.',
-          accion: { tipo: 'link', destino: '/lugares/cancha', label: 'Ver La Cancha' }
-        }
-      } else if (texto.toLowerCase().includes('evento') || texto.toLowerCase().includes('festival')) {
-        respuesta = {
-          tipo: 'bot',
-          texto: 'Los eventos más importantes son el Carnaval de Cochabamba y la Fiesta de Urkupiña. Te puedo mostrar el calendario completo.',
-          accion: { tipo: 'link', destino: '/eventos', label: 'Ver eventos' }
-        }
-      } else if (texto.toLowerCase().includes('itinerario') || texto.toLowerCase().includes('días')) {
-        respuesta = {
-          tipo: 'bot',
-          texto: 'Día 1: Cristo de la Concordia y Plaza 14 de Septiembre. Día 2: Torotoro (tour de día completo). Día 3: Villa Tunari y naturaleza. ¿Te muestro más detalles?',
-          accion: { tipo: 'link', destino: '/lugares', label: 'Explorar lugares' }
-        }
-      } else {
-        respuesta = {
-          tipo: 'bot',
-          texto: `Excelente pregunta! Basándome en tu consulta sobre "${texto}", te recomendaría explorar nuestro mapa interactivo donde encontrarás toda la información que necesitas.`,
-          accion: { tipo: 'link', destino: '/mapa', label: 'Ir al mapa' }
-        }
-      }
-
       setMensajes(prev => [...prev, respuesta])
+      if (data.action) {
+        ejecutarAccion(data.action)
+      }
+    } catch (error) {
+      const fallback: Mensaje = {
+        tipo: 'bot',
+        texto: 'Tuve un problema al consultar el asistente. Puedes intentar de nuevo o explorar el mapa.',
+        accion: { tipo: 'navigate', destino: '/mapa', label: 'Ir al mapa' }
+      }
+      setMensajes(prev => [...prev, fallback])
+      ejecutarAccion(fallback.accion)
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -164,18 +169,6 @@ export default function AISidePanel({ isOpen, onClose }: AISidePanelProps) {
                       }`}>
                         <p className="text-sm">{mensaje.texto}</p>
                       </div>
-                      {mensaje.accion && (
-                        <Link href={mensaje.accion.destino} onClick={onClose}>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="mt-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors flex items-center gap-2"
-                          >
-                            <MapPin className="w-4 h-4" />
-                            {mensaje.accion.label}
-                          </motion.button>
-                        </Link>
-                      )}
                     </div>
                   </div>
                 </motion.div>

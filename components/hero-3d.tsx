@@ -166,7 +166,11 @@ function Scene3D() {
 export default function Hero3D() {
   return (
     <div className="absolute inset-0 -z-10">
-      <Canvas camera={{ position: [0, 1, 8], fov: 60 }}>
+      <Canvas
+        camera={{ position: [0, 1, 8], fov: 60 }}
+        dpr={[1, 1.25]}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
+      >
         <Scene3D />
       </Canvas>
     </div>

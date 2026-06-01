@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ImageOrPlaceholder } from '@/components/ui/image-or-placeholder'
 import Link from 'next/link'
+import { useApp } from '@/components/app-shell'
 import { Star, MessageSquare, TrendingUp, Filter, Search, ThumbsUp, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +16,7 @@ import { DataService } from '@/lib/domain/data-service'
 import type { Lugar, Restaurante, Resena } from '@/lib/domain/types'
 
 export default function ResenasPage() {
+  const { openAuth } = useApp()
   const [busqueda, setBusqueda] = useState('')
   const [filtroRating, setFiltroRating] = useState<number | null>(null)
 
@@ -315,7 +317,15 @@ export default function ResenasPage() {
                 <CardContent className="space-y-6">
                   <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">
-                      Debes <Button variant="link" className="p-0 h-auto">iniciar sesión</Button> para escribir una reseña.
+                      Debes{' '}
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto"
+                        onClick={openAuth}
+                      >
+                        iniciar sesión
+                      </Button>{' '}
+                      para escribir una reseña.
                       Tu opinión ayuda a otros viajeros a planificar su visita.
                     </p>
                   </div>
@@ -350,7 +360,9 @@ export default function ResenasPage() {
                       />
                     </div>
 
-                    <Button className="w-full">Publicar reseña</Button>
+                    <Button className="w-full" onClick={openAuth}>
+                      Publicar reseña
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

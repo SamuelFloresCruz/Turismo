@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Send, X, Sparkles, MapPin, Utensils, Calendar, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { useRouter } from 'next/navigation'
+import { useApp } from '@/components/app-shell'
 
 const sugerencias = [
   { icon: MapPin, texto: '¿Cuáles son los mejores lugares para visitar?' },
@@ -21,23 +23,52 @@ const mensajesEjemplo = [
 ]
 
 export default function AIAssistant() {
+  const router = useRouter()
+  const { openAuth } = useApp()
   const [isOpen, setIsOpen] = useState(false)
   const [mensajes, setMensajes] = useState(mensajesEjemplo)
   const [input, setInput] = useState('')
 
-  const enviarMensaje = (texto: string) => {
+  const ejecutarAccion = (accion?: { tipo: 'link' | 'navigate' | 'map_select' | 'open_auth'; destino?: string }) => {
+    if (!accion) return
+    if (accion.tipo === 'open_auth') {
+      openAuth()
+      return
+    }
+    if (accion.tipo === 'map_select' && accion.destino) {
+      router.push(`/mapa?select=${accion.destino}`)
+      return
+    }
+    if ((accion.tipo === 'navigate' || accion.tipo === 'link') && accion.destino) {
+      router.push(accion.destino)
+    }
+  }
+
+  const enviarMensaje = async (texto: string) => {
     if (!texto.trim()) return
     
     setMensajes(prev => [...prev, { tipo: 'user', texto }])
     setInput('')
-    
-    // Simular respuesta del bot
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...mensajes, { tipo: 'user', texto }].map(m => ({ role: m.tipo === 'user' ? 'user' : 'assistant', content: m.texto }))
+        }),
+      })
+      const data = await response.json()
+      setMensajes(prev => [...prev, { tipo: 'bot', texto: data.reply ?? 'No pude generar respuesta en este momento.' }])
+      if (data.action) {
+        ejecutarAccion(data.action)
+      }
+    } catch (error) {
       setMensajes(prev => [...prev, {
         tipo: 'bot',
-        texto: `¡Excelente pregunta! Basándome en tu consulta sobre "${texto}", te recomendaría explorar el Cristo de la Concordia y el Parque Nacional Torotoro. Ambos lugares son imperdibles y ofrecen experiencias únicas. ¿Te gustaría que te muestre más detalles sobre alguno de estos lugares?`
+        texto: 'Tuve un problema al consultar el asistente. Puedes intentar de nuevo o explorar el mapa.'
       }])
-    }, 1000)
+    }
   }
 
   return (
