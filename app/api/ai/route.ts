@@ -62,6 +62,32 @@ const stripCodeFences = (value: string) => {
   return trimmed.replace(/^```[a-zA-Z]*\s*/u, '').replace(/```$/u, '').trim()
 }
 
+const tryParseJsonFromText = (value: string) => {
+  const cleaned = stripCodeFences(value)
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    const firstBrace = cleaned.indexOf('{')
+    const lastBrace = cleaned.lastIndexOf('}')
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1))
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
+}
+
+const extractReplyText = (value: string) => {
+  const cleaned = stripCodeFences(value)
+  const replyPattern = new RegExp('"reply"\\s*:\\s*"([\\s\\S]*?)"\\s*(,|})', 'u')
+  const match = cleaned.match(replyPattern)
+  if (!match) return cleaned
+  return match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+}
+
 const normalizeActionKeys = (payload: unknown) => {
   if (!payload || typeof payload !== 'object') return payload
   const record = payload as Record<string, unknown>
@@ -129,17 +155,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ reply: 'Respuesta vacia del asistente.' }, { status: 200 })
     }
 
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(stripCodeFences(rawText))
-    } catch {
-      return NextResponse.json({ reply: rawText }, { status: 200 })
+    const parsed = tryParseJsonFromText(rawText)
+    if (!parsed) {
+      return NextResponse.json({ reply: extractReplyText(rawText) }, { status: 200 })
     }
 
     const normalized = normalizeActionKeys(parsed)
     const validated = AiResponseSchema.safeParse(normalized)
     if (!validated.success) {
-      return NextResponse.json({ reply: rawText }, { status: 200 })
+      return NextResponse.json({ reply: extractReplyText(rawText) }, { status: 200 })
     }
 
     return NextResponse.json(validated.data, { status: 200 })

@@ -29,6 +29,12 @@ export default function AIAssistant() {
   const [mensajes, setMensajes] = useState(mensajesEjemplo)
   const [input, setInput] = useState('')
 
+  const limpiarRespuesta = (texto: string) => {
+    const trimmed = texto.trim()
+    if (!trimmed.startsWith('```')) return texto
+    return trimmed.replace(/^```[a-zA-Z]*\s*/u, '').replace(/```$/u, '').trim()
+  }
+
   const ejecutarAccion = (accion?: { tipo: 'link' | 'navigate' | 'map_select' | 'open_auth'; destino?: string }) => {
     if (!accion) return
     if (accion.tipo === 'open_auth') {
@@ -59,7 +65,7 @@ export default function AIAssistant() {
         }),
       })
       const data = await response.json()
-      setMensajes(prev => [...prev, { tipo: 'bot', texto: data.reply ?? 'No pude generar respuesta en este momento.' }])
+      setMensajes(prev => [...prev, { tipo: 'bot', texto: limpiarRespuesta(data.reply ?? 'No pude generar respuesta en este momento.') }])
       if (data.action) {
         ejecutarAccion(data.action)
       }

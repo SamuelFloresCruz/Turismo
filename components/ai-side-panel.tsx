@@ -40,6 +40,12 @@ export default function AISidePanel({ isOpen, onClose }: AISidePanelProps) {
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  const limpiarRespuesta = (texto: string) => {
+    const trimmed = texto.trim()
+    if (!trimmed.startsWith('```')) return texto
+    return trimmed.replace(/^```[a-zA-Z]*\s*/u, '').replace(/```$/u, '').trim()
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -81,7 +87,7 @@ export default function AISidePanel({ isOpen, onClose }: AISidePanelProps) {
       const data = await response.json()
       const respuesta: Mensaje = {
         tipo: 'bot',
-        texto: data.reply ?? 'No pude generar respuesta en este momento.',
+        texto: limpiarRespuesta(data.reply ?? 'No pude generar respuesta en este momento.'),
         accion: data.action
       }
       setMensajes(prev => [...prev, respuesta])
